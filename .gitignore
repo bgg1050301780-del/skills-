@@ -1,0 +1,10 @@
+node_modules/
+dist/
+release/
+.local/
+*.log
+*.bak
+*.tsbuildinfo
+coverage/
+Thumbs.db
+desktop.ini

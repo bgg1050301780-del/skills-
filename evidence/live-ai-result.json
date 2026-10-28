@@ -1,0 +1,98 @@
+{
+  "model": "gpt-5.4-mini",
+  "threadPersisted": true,
+  "proposal": {
+    "answer": "",
+    "baseRevision": 8,
+    "operations": [
+      {
+        "field": "title",
+        "position": 2,
+        "stepId": "54d68ab3-c3f2-400c-97e2-3ccb5e74ce18",
+        "type": "set_step",
+        "value": "生成配乐"
+      },
+      {
+        "field": "tool",
+        "position": 2,
+        "stepId": "54d68ab3-c3f2-400c-97e2-3ccb5e74ce18",
+        "type": "set_step",
+        "value": "本地音乐库优先，必要时音乐生成模型"
+      },
+      {
+        "field": "toolInput",
+        "position": 2,
+        "stepId": "54d68ab3-c3f2-400c-97e2-3ccb5e74ce18",
+        "type": "set_step",
+        "value": "视频分析结果、用户对音乐风格的要求，以及本地音乐素材列表。"
+      },
+      {
+        "field": "toolOutput",
+        "position": 2,
+        "stepId": "54d68ab3-c3f2-400c-97e2-3ccb5e74ce18",
+        "type": "set_step",
+        "value": "优先匹配到的本地音乐文件；若本地无合适素材，则生成或推荐匹配视频时长与情绪的背景音乐文件。"
+      },
+      {
+        "field": "toolFallback",
+        "position": 2,
+        "stepId": "54d68ab3-c3f2-400c-97e2-3ccb5e74ce18",
+        "type": "set_step",
+        "value": "本地音乐库不可用或无合适素材时，再说明情况并调用音乐生成模型；工具不可用时向用户说明，并保留当前工作。"
+      },
+      {
+        "field": "requirements",
+        "position": 2,
+        "stepId": "54d68ab3-c3f2-400c-97e2-3ccb5e74ce18",
+        "type": "set_step",
+        "value": "按本步骤目标处理真实素材；先检索并优先使用本地音乐，只有在没有合适素材时才调用音乐生成模型；调用工具前检查可用性，不虚构执行结果。"
+      },
+      {
+        "field": "output",
+        "position": 2,
+        "stepId": "54d68ab3-c3f2-400c-97e2-3ccb5e74ce18",
+        "type": "set_step",
+        "value": "优先选中的本地音乐文件；若本地无合适素材，则输出匹配视频时长与情绪的背景音乐文件。"
+      },
+      {
+        "field": "error",
+        "position": 2,
+        "stepId": "54d68ab3-c3f2-400c-97e2-3ccb5e74ce18",
+        "type": "set_step",
+        "value": "检查本地音乐库、输入格式、文件大小和工具状态；可修复的错误重试一次，仍无合适素材或失败则说明原因。"
+      },
+      {
+        "field": "done",
+        "position": 2,
+        "stepId": "54d68ab3-c3f2-400c-97e2-3ccb5e74ce18",
+        "type": "set_step",
+        "value": "已优先完成本地音乐匹配；若无合适素材，则已按要求调用音乐模型并产出结果，且内容完整。"
+      }
+    ],
+    "summary": "仅针对第三步提出结构化调整方案：优先使用本地音乐，无合适素材时再调用音乐模型。"
+  },
+  "changedStep": {
+    "id": "54d68ab3-c3f2-400c-97e2-3ccb5e74ce18",
+    "title": "生成配乐",
+    "goal": "根据视频风格和情绪，生成或选择合适的背景音乐。",
+    "input": "视频分析结果及用户对音乐风格的要求。",
+    "tool": "本地音乐库优先，必要时音乐生成模型",
+    "toolInput": "视频分析结果、用户对音乐风格的要求，以及本地音乐素材列表。",
+    "toolOutput": "优先匹配到的本地音乐文件；若本地无合适素材，则生成或推荐匹配视频时长与情绪的背景音乐文件。",
+    "toolFallback": "本地音乐库不可用或无合适素材时，再说明情况并调用音乐生成模型；工具不可用时向用户说明，并保留当前工作。",
+    "toolConfirmed": false,
+    "requirements": "按本步骤目标处理真实素材；先检索并优先使用本地音乐，只有在没有合适素材时才调用音乐生成模型；调用工具前检查可用性，不虚构执行结果。",
+    "output": "优先选中的本地音乐文件；若本地无合适素材，则输出匹配视频时长与情绪的背景音乐文件。",
+    "error": "检查本地音乐库、输入格式、文件大小和工具状态；可修复的错误重试一次，仍无合适素材或失败则说明原因。",
+    "done": "已优先完成本地音乐匹配；若无合适素材，则已按要求调用音乐模型并产出结果，且内容完整。",
+    "refs": [],
+    "dependsOn": []
+  },
+  "usage": {
+    "input_tokens": 19887,
+    "cached_input_tokens": 9728,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 1613,
+    "reasoning_output_tokens": 217
+  }
+}

@@ -1,0 +1,43 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import { strToU8, zipSync } from 'fflate';
+import { blankProject, exampleProject, blankStep, renderSkill, parseSkill, safePath, readZip, validateProject, applyProposal, proposalDiff, fingerprint, humanReply } from '../shared/core.mjs';
+import { Store, assertProject, readJSON } from '../electron/store.mjs';
+
+const proposal=(p,operations)=>({summary:'测试修改',answer:'请确认修改。',baseRevision:p.revision,operations});
+const set=(id,field,value)=>({type:'set_step',stepId:id,field,value,position:0});
+test('标准内容可解析，中文、工具与步骤保留',()=>{
+ const p=exampleProject(),md=renderSkill(p),q=parseSkill(md);assert.equal(q.slug,p.slug);assert.equal(q.steps.length,7);assert.equal(q.steps[2].tool,p.steps[2].tool);assert.equal(q.steps[0].goal,p.steps[0].goal);assert.equal(renderSkill(q),md);assert(!md.includes('\uFFFD'));
+});
+test('导入无规范章节时保留全部未知内容，不编造步骤',()=>{const raw='---\nname: unusual\ndescription: 示例\nx-vendor: special\n---\n\n# 试验\n\n这是一段原始规则。\n\n## 重要约束\n不要自动执行脚本。\n';const p=parseSkill(raw);assert.equal(p.steps.length,0);assert.equal(renderSkill(p),raw);p.purpose='手工补充目标';const md=renderSkill(p);assert(md.includes('不要自动执行脚本。'));assert(md.includes('x-vendor: special'));assert(md.includes('这是一段原始规则。'));});
+test('YAML 错误和元数据缺失会标记冲突',()=>{assert(parseSkill('# 示例\n没有元数据').conflicts.length);assert(parseSkill('---\nname: [oops\n---\n# 示例').conflicts.length);});
+test('网关把 JSON 嵌入 answer 时仍展示真实方案的中文摘要',()=>{const p={answer:'{"operations":[]}',summary:'优先使用本地音乐。',operations:[{}]};assert.equal(humanReply(p),'修改建议（尚未应用）：\n优先使用本地音乐。');assert(!humanReply(p).includes('operations'));});
+test('路径检查阻止穿越、绝对路径和 Windows 特殊名',()=>{for(const name of ['../a','/a','C:/a','a\\b','a/../b','NUL.txt','assets/CON.png','assets/x.','a//b','a/../../b'])assert.throws(()=>safePath(name));assert.equal(safePath('references/中文资料.md'),'references/中文资料.md');});
+test('ZIP 不允许路径穿越及大小写冲突',()=>{assert.throws(()=>readZip(zipSync({'../outside.txt':strToU8('x')})));assert.throws(()=>readZip(zipSync({'A.txt':strToU8('x'),'a.txt':strToU8('y')})));});
+test('修改方案只改指定步骤，取消阶段原对象保持不变',()=>{const p=exampleProject(),before=JSON.stringify(p),plan=proposal(p,[set(p.steps[2].id,'goal','优先本地音乐，不合适时才生成。')]);const q=applyProposal(p,plan);assert.equal(JSON.stringify(p),before);assert(q.steps[2].goal.includes('本地音乐'));assert.deepEqual(q.steps[0],p.steps[0]);assert.equal(proposalDiff(p,plan).length,1);});
+test('过时、未知字段、无效 JSON 方案被拒绝',()=>{const p=exampleProject();assert.throws(()=>applyProposal(p,{...proposal(p,[]),baseRevision:999}));assert.throws(()=>applyProposal(p,proposal(p,[set(p.steps[0].id,'__proto__','x')])));assert.throws(()=>applyProposal(p,proposal(p,[set('nonexistent','goal','x')])));assert.throws(()=>applyProposal(p,{hello:'world'}));});
+test('步骤依赖不得形成循环，移动步骤后也会检查',()=>{const p=exampleProject();p.steps[1].dependsOn=[p.steps[0].id];assert.throws(()=>applyProposal(p,proposal(p,[{type:'move_step',stepId:p.steps[1].id,field:'',value:'',position:0}])));});
+test('AI 可在一个方案内新建步骤并填写所有细节，供用户完整审阅',()=>{const p=exampleProject();const plan=proposal(p,[{type:'add_step',stepId:'new-1',field:'',value:'质量复查',position:7},set('new-1','goal','检查视频'),set('new-1','output','检查报告'),set('new-1','done','报告可验收')]);const q=applyProposal(p,plan);assert.equal(q.steps[7].goal,'检查视频');assert(proposalDiff(p,plan).some(d=>d.after.includes('检查报告')));});
+test('导出检查识别缺失引用、未验证工具和冲突',()=>{const p=exampleProject();p.steps[0].refs=['missing'];p.conflicts.push('待确认的章节');const issues=validateProject(p);assert(issues.some(x=>x.level==='error'&&x.section==='files'));assert(issues.some(x=>x.level==='error'&&x.text==='待确认的章节'));assert(issues.some(x=>x.level==='warning'&&x.section==='tools'));});
+test('检查 Markdown 相对文件引用是否失效',()=>{const p=exampleProject();p.steps[0].requirements='参照 [规则](references/missing.md)';assert(validateProject(p).some(x=>x.text.includes('missing.md')));});
+test('持久化、恢复、附件完整、重新导入、项目隔离',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'skill-studio-core-'));const store=new Store(root);await store.init();const initial=(await store.list())[0],p=await store.read(initial.id);assert.equal(p.steps.length,7);assert.equal(p.files.length,2);
+ const before=p.steps[2].goal,plan=proposal(p,[set(p.steps[2].id,'goal','优先使用本地音乐，没有合适的再调用音乐模型。')]);
+ const q=await store.apply(p.id,plan);assert.equal(q.revision,2);const reopened=new Store(root);assert.equal((await reopened.read(p.id)).steps[2].goal,q.steps[2].goal);
+ const copy=await store.duplicate(p.id);assert.notEqual(copy.id,p.id);const changed=await store.save({...copy,name:'独立项目'},copy.revision);assert.notEqual((await store.read(p.id)).name,changed.name);
+ const out=path.join(root,'export.zip');await store.exportZip(p.id,out);const zipped=readZip(await fs.readFile(out));assert(Object.keys(zipped).some(n=>n.endsWith('references/剪辑规范.md')));const imported=await store.importEntries(zipped);assert.equal(imported.steps.length,7);assert.equal(imported.steps[2].goal,q.steps[2].goal);assert.equal(imported.files[0].hash,q.files[0].hash);
+ const restored=await store.undo(p.id);assert.equal(restored.steps[2].goal,before);assert.equal(restored.revision,3);assert((await store.history(p.id)).length>=3);
+ await assert.rejects(store.apply(p.id,plan),/项目已发生变化/);await store.remove(copy.id);assert(!(await store.list()).some(x=>x.id===copy.id));assert((await store.list()).some(x=>x.id===p.id));
+});
+test('完整 Skill 文件夹保留 scripts、assets 和未知文件的字节',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'skill-studio-roundtrip-'));const s=new Store(root);await s.init();
+ const original={'custom/SKILL.md':strToU8('---\nname: full-skill\ndescription: 文件完整性测试\n---\n# 完整包\n## 工作流程\n### 分析输入\n**步骤目标**\n分析真实输入。\n**输出结果**\n报告。\n**完成标准**\n报告完整。\n## 未知规则\n保留所有文件。\n'),'custom/scripts/test.py':strToU8('print("not executed")\n'),'custom/assets/sample.bin':new Uint8Array([0,255,128,1,3]),'custom/other/config.json':strToU8('{"中文":true}')};
+ const p=await s.importEntries(original);assert.equal(p.files.length,3);assert.equal(renderSkill(p),new TextDecoder().decode(original['custom/SKILL.md']));const {entries}=await s.exportEntries(p.id);for(const [name,bytes]of Object.entries(original))assert.deepEqual(new Uint8Array(entries[name.slice(7)]),bytes);
+ const q=await s.save({...p,purpose:'手工修改'},p.revision);assert(renderSkill(q).includes('保留所有文件。'));assert.equal((await s.fileBytes(q.files.find(f=>f.path==='assets/sample.bin'))).length,5);
+});
+test('无附件导出不能产生步骤中的失效引用',async()=>{const root=await fs.mkdtemp(path.join(os.tmpdir(),'skill-studio-refs-'));const s=new Store(root);await s.init();const p=await s.read((await s.list())[0].id);await assert.rejects(s.exportEntries(p.id,'skill',false),/不能排除/);});
+test('损坏项目数据可读回备份；未知密钥字段不进入项目数据',async()=>{const root=await fs.mkdtemp(path.join(os.tmpdir(),'skill-studio-recover-'));const s=new Store(root);await s.init();const p=await s.read((await s.list())[0].id);await s.save({...p,purpose:'新内容'},p.revision);const file=path.join(s.projectDir(p.id),'project.json');await fs.writeFile(file,'{broken','utf8');assert.equal((await s.read(p.id)).revision,1);assert.equal(assertProject({...p,apiKey:'should-not-export'}).apiKey,undefined);});
+test('交付的三种实际示例均可导入，完善不规则 Skill 后完整导出',async()=>{const root=await fs.mkdtemp(path.join(os.tmpdir(),'skill-studio-fixtures-'));const s=new Store(root);await s.init();const standard=await s.importPath(path.resolve('examples/standard/SKILL.md'));assert.equal(standard.slug,'document-review');assert.equal(standard.steps.length,1);const complete=await s.importPath(path.resolve('examples/complete'));assert.equal(complete.files.length,3);const irregular=await s.importPath(path.resolve('examples/unusual/SKILL.md'));assert(irregular.source.unknown.includes('很重要的补充'));assert.equal(irregular.steps.length,0);const step={...blankStep('整理资料'),goal:'整理真实资料',output:'资料清单',done:'清单完整'};const edited=await s.save({...irregular,steps:[step]},irregular.revision);const out=path.join(root,'irregular.zip');await s.exportZip(edited.id,out);const back=await s.importEntries(readZip(await fs.readFile(out)));assert.equal(back.steps[0].title,'整理资料');assert(renderSkill(back).includes('很重要的补充'));assert(renderSkill(back).includes('custom-property'));});

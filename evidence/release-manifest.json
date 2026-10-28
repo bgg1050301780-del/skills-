@@ -1,0 +1,28 @@
+{
+  "version": "0.1.0",
+  "tag": "skill-studio-v0.1.0-20261029-01",
+  "at": "2026-10-28T16:50:02.446Z",
+  "files": [
+    {
+      "file": "release/Skill-Studio-0.1.0-x64.exe",
+      "size": 256753408,
+      "sha256": "6a1509c43aa74cf0374a73ad8710211a69eaa98f6df4e93f3208d285db7e83d5"
+    },
+    {
+      "file": "release/Skill-Studio-Setup-0.1.0-x64.exe",
+      "size": 265775672,
+      "sha256": "01249e4aec292bc7376c13dadb758efc864e325b21b71b409126e01c712bc4c8"
+    },
+    {
+      "file": "release/win-unpacked/resources/app.asar",
+      "size": 36047301,
+      "sha256": "ccd1c7fe7e8ed1f8d9df31f43c9f5d8fe6aef1250609cb749fe0dd742bf4bbb4"
+    },
+    {
+      "file": "C:/Users/Administrator/AppData/Local/Programs/SkillStudio/resources/app.asar",
+      "size": 36047301,
+      "sha256": "ccd1c7fe7e8ed1f8d9df31f43c9f5d8fe6aef1250609cb749fe0dd742bf4bbb4"
+    }
+  ],
+  "installedArchiveMatches": true
+}

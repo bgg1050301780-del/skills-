@@ -1,0 +1,144 @@
+{
+  "passed": true,
+  "at": "2026-10-28T16:24:16.170Z",
+  "version": "0.1.0",
+  "dataRoot": "C:\\Users\\Administrator\\Documents\\ChatGPT\\sikll可视化编写\\.local\\desktop-test-1793204624495",
+  "results": [
+    {
+      "name": "启动与真实示例项目",
+      "passed": true,
+      "detail": "七个步骤与两份实际文档附件已加载。"
+    },
+    {
+      "name": "自动保存与重启恢复",
+      "passed": true,
+      "detail": "通过真实表单修改，重新加载后从磁盘恢复。"
+    },
+    {
+      "name": "撤销修改",
+      "passed": true,
+      "detail": "原始步骤目标恢复，保留历史版本。"
+    },
+    {
+      "name": "动态步骤编辑",
+      "passed": true,
+      "detail": "新增步骤、逐字段编辑与保存成功。"
+    },
+    {
+      "name": "步骤排序、删除与恢复",
+      "passed": true,
+      "detail": "按钮移动、确认删除、撤销恢复均生效。"
+    },
+    {
+      "name": "从零创建与多项目隔离",
+      "passed": true,
+      "detail": "通过真实界面新建并填写基本信息，原项目未改变。"
+    },
+    {
+      "name": "安全模型配置",
+      "passed": true,
+      "detail": "密钥不会回填到界面，安全存储状态已加载。"
+    },
+    {
+      "name": "真实 AI 生成且未确认前不修改",
+      "passed": true,
+      "detail": "Codex SDK 经造梦鲸返回结构化修改方案。"
+    },
+    {
+      "name": "取消真实 AI 方案",
+      "passed": true,
+      "detail": "点击取消后项目及步骤完全不变。"
+    },
+    {
+      "name": "AI 确认应用与预览同步",
+      "passed": true,
+      "detail": "第三步更新，其他步骤保留，SKILL.md 从同一份数据生成。"
+    },
+    {
+      "name": "AI 修改后真实 ZIP 导出",
+      "passed": true,
+      "detail": "检查生成的 Markdown 和全部附件。"
+    },
+    {
+      "name": "撤销真实 AI 修改",
+      "passed": true,
+      "detail": "第三步及全部步骤恢复到应用前内容。"
+    },
+    {
+      "name": "多轮会话保存恢复",
+      "passed": true,
+      "detail": "使用相同 Codex 会话编号恢复对话，并读取撤销后的当前项目。"
+    },
+    {
+      "name": "无 API 配置错误处理",
+      "passed": true,
+      "detail": "清晰报告未配置，原项目数据不变。"
+    },
+    {
+      "name": "小窗口布局",
+      "passed": true,
+      "detail": "1100 × 760 无页面水平溢出，AI 与编辑面板可独立滚动。"
+    }
+  ],
+  "consoleErrors": [],
+  "budget": {
+    "limitRmb": 5,
+    "reservedRmb": 1.8024598970888206,
+    "records": [
+      {
+        "at": "2026-10-28T16:12:51.530Z",
+        "model": "gpt-5.4-mini",
+        "reservedRmb": 0.1496441001682242,
+        "status": "已预留上界"
+      },
+      {
+        "at": "2026-10-28T16:16:34.026Z",
+        "model": "gpt-5.4-mini",
+        "reservedRmb": 0.1496441001682242,
+        "status": "已预留上界"
+      },
+      {
+        "at": "2026-10-28T16:16:41.967Z",
+        "model": "gpt-5.4-mini",
+        "reservedRmb": 0.21540064469137202,
+        "status": "已预留上界"
+      },
+      {
+        "at": "2026-10-28T16:20:35.302Z",
+        "model": "gpt-5.4-mini",
+        "reservedRmb": 0.150071957066052,
+        "status": "已预留上界"
+      },
+      {
+        "at": "2026-10-28T16:20:42.645Z",
+        "model": "gpt-5.4-mini",
+        "reservedRmb": 0.21435630581172785,
+        "status": "已预留上界"
+      },
+      {
+        "at": "2026-10-28T16:20:50.012Z",
+        "model": "gpt-5.4-mini",
+        "reservedRmb": 0.28117099104993365,
+        "status": "已预留上界"
+      },
+      {
+        "at": "2026-10-28T16:23:55.950Z",
+        "model": "gpt-5.4-mini",
+        "reservedRmb": 0.150071957066052,
+        "status": "已预留上界"
+      },
+      {
+        "at": "2026-10-28T16:24:03.386Z",
+        "model": "gpt-5.4-mini",
+        "reservedRmb": 0.2148577724984292,
+        "status": "已预留上界"
+      },
+      {
+        "at": "2026-10-28T16:24:10.514Z",
+        "model": "gpt-5.4-mini",
+        "reservedRmb": 0.2772420685688053,
+        "status": "已预留上界"
+      }
+    ]
+  }
+}

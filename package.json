@@ -1,0 +1,70 @@
+{
+  "name": "skill-studio",
+  "productName": "Skill Studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "简体中文 Windows 可视化 Skill 创作器",
+  "author": "Skill Studio",
+  "main": "electron/main.mjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "start": "electron .",
+    "test": "node --test tests/core.test.mjs",
+    "test:desktop": "node scripts/desktop-test.mjs",
+    "dist": "npm run build && node scripts/package.mjs"
+  },
+  "dependencies": {
+    "@openai/codex-sdk": "0.165.0",
+    "@tabler/icons-react": "^3.35.0",
+    "fflate": "^0.8.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "electron": "45.1.0",
+    "electron-builder": "26.18.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0"
+  },
+  "build": {
+    "appId": "com.skillstudio.desktop",
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/@openai/codex*/**/*"
+    ],
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "shared/**/*",
+      "examples/**/*",
+      "tests/desktop-runner.mjs",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ],
+      "artifactName": "Skill-Studio-${version}-${arch}.${ext}",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Skill Studio 可视化创作器",
+      "artifactName": "Skill-Studio-Setup-${version}-${arch}.${ext}"
+    }
+  }
+}

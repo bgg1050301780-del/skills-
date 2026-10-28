@@ -1,0 +1,7 @@
+{
+  "limitRmb": 5,
+  "conservativeReservedUpperBoundRmb": 3.2865712591347345,
+  "requestCount": 16,
+  "hasPerRequestCostReceipts": false,
+  "note": "保守预留上界并非实际扣费；全部验收共用同一预算台账，未超过用户授权 5 元。"
+}
