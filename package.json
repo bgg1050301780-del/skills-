@@ -1,7 +1,7 @@
 {
   "name": "skill-studio",
   "productName": "Skill Studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "简体中文 Windows 可视化 Skill 创作器",

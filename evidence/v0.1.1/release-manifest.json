@@ -1,0 +1,49 @@
+{
+  "version": "0.1.1",
+  "tag": "skill-studio-v0.1.1-20261029-01",
+  "at": "2026-10-29T01:02:10.220Z",
+  "files": [
+    {
+      "file": "release/Skill-Studio-0.1.1-x64.exe",
+      "size": 256758288,
+      "sha256": "9578616ffe1eac650a715e0c62767e972c7fac89ceb049047de93b30219a732d"
+    },
+    {
+      "file": "release/Skill-Studio-Setup-0.1.1-x64.exe",
+      "size": 265782141,
+      "sha256": "5728dcb835dc0f9accb989ce65eb851e534622cdd9d2d2572a398a7b321e75b6"
+    },
+    {
+      "file": "release/win-unpacked/resources/app.asar",
+      "size": 36072385,
+      "sha256": "518da8aad38347c5bae14112246ca6a83e3760da528e8bcdbb9a4a212c7b8b83"
+    }
+  ],
+  "installedArchiveMatches": true,
+  "installedSourceMatches": [
+    "electron/main.mjs",
+    "electron/preload.cjs",
+    "electron/ai.mjs",
+    "electron/attachments.mjs",
+    "tests/desktop-runner.mjs"
+  ],
+  "dataPreservation": {
+    "backupCreated": true,
+    "protectedFileCount": 7,
+    "modelConfigUnchanged": true,
+    "projectDataUnchanged": true
+  },
+  "tests": {
+    "corePassed": 21,
+    "installedDesktopPassed": 20,
+    "desktopPassed": true,
+    "consoleErrors": 0,
+    "liveAttachmentReadPassed": true,
+    "liveModel": "gpt-5.4-mini"
+  },
+  "budget": {
+    "limitRmb": 5,
+    "cumulativeReservedUpperBoundRmb": 3.4410460016977886,
+    "actualBilledAmountKnown": false
+  }
+}

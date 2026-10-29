@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { Store, readJSON, atomicWrite } from './store.mjs';
 import { Profiles, AI, redact } from './ai.mjs';
+import { addAttachments } from './attachments.mjs';
 import { blankProject, renderSkill, validateProject, proposalDiff } from '../shared/core.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
@@ -44,7 +45,7 @@ async function dispatch(action,p={}){
     case 'modelList':return ai.models();
     case 'officialLogin':await ai.login(event=>win.webContents.send('studio:ai',{projectId:p.id,...event}));return true;
     case 'session':return store.session(p.id);
-    case 'ai':return ai.run(p.id,p.text,p.section,event=>{if(!win.isDestroyed())win.webContents.send('studio:ai',{projectId:p.id,...event});});
+    case 'ai':return ai.run(p.id,p.text,p.section,event=>{if(!win.isDestroyed())win.webContents.send('studio:ai',{projectId:p.id,...event});},p.attachmentIds||[]);
     case 'stopAI':ai.cancel(p.id);return true;
     case 'applyAI':{const session=await store.session(p.id);if(!session.proposal)throw Error('没有待应用的修改方案。');const result=await store.run(()=>store.apply(p.id,session.proposal));session.messages.push({role:'system',text:'已应用修改：'+session.proposal.summary,at:new Date().toISOString()});session.proposal=null;await store.saveSession(p.id,session);return result;}
     case 'cancelAI':{const session=await store.session(p.id);session.proposal=null;await store.saveSession(p.id,session);return session;}
@@ -52,7 +53,7 @@ async function dispatch(action,p={}){
     case 'budget':return readJSON(ai.budgetFile,{limitRmb:5,reservedRmb:0,records:[]});
     case 'showData':await shell.openPath(store.root);return true;
     case 'closeReady':await store.queue;for(const id of ai.running.keys())ai.cancel(id);closing=true;win.close();return true;
-    case 'help':return '新建或导入 Skill → 填写左侧栏目 → 编辑步骤并关联资料 → 配置模型 → 与 AI 对话并确认方案 → 查看预览 → 导出。\n\n所有编辑自动保存。撤销和历史版本可恢复内容。脚本仅作为资料保存，软件不会执行它们。资料默认不发送给 AI，只有明确开启“允许 AI 读取”的文本资料才会发送。\n\nAI 只负责设计 Skill，不负责执行剪辑或生成视频。';
+    case 'help':return '新建或导入 Skill → 填写左侧栏目 → 编辑步骤并关联资料 → 配置模型 → 与 AI 对话并确认方案 → 查看预览 → 导出。\n\n所有编辑自动保存。撤销和历史版本可恢复内容。脚本仅作为资料保存，软件不会执行它们。资料默认只保存在本机。聊天区选中的可读附件会在点击发送时随本次消息提供；参考资料中开启“允许 AI 读取”的文本会供后续对话使用。聊天区和底部资料区都可拖入文件；输入区上边缘可拖动调整高度，右上角可展开长消息。\n\nAI 只负责设计 Skill，不负责执行剪辑或生成视频。';
     default:throw Error('不支持的操作。');
   }
 }
@@ -64,6 +65,7 @@ app.whenReady().then(async()=>{
   if(process.env.STUDIO_DESKTOP_TEST==='1')win.webContents.on('console-message',event=>{if(event.level==='error')console.error('界面错误：'+redact(event.message));});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',(event,url)=>{const current=win.webContents.getURL();if(url!==current)event.preventDefault();});
   ipcMain.handle('studio:call',async(event,action,payload)=>{if(!senderOK(event))return {ok:false,error:'请求来源无效。'};try{return {ok:true,value:await dispatch(action,payload)};}catch(e){return {ok:false,error:redact(e.message)};}});
+  ipcMain.handle('studio:add-files',async(event,p)=>{if(!senderOK(event))return {ok:false,error:'请求来源无效。'};try{return {ok:true,value:await addAttachments(store,p.id,p.paths,p.forChat===true,p.draftCount||0)};}catch(e){return {ok:false,error:redact(e.message)};}});
   win.on('close',event=>{if(closing)return;event.preventDefault();win.webContents.send('studio:ai',{kind:'closing'});});
   win.webContents.on('render-process-gone',()=>{closing=true;});
   if(process.env.STUDIO_DEV_URL)await win.loadURL(process.env.STUDIO_DEV_URL);else await win.loadFile(path.join(here,'..','dist','index.html'));

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { BrowserWindow } from 'electron';
+import { randomUUID } from 'node:crypto';
 import { renderSkill, readZip } from '../shared/core.mjs';
 
 export async function runDesktopTest({app,win,store,profiles,ai,dispatch}){
@@ -45,6 +46,42 @@ export async function runDesktopTest({app,win,store,profiles,ai,dispatch}){
     const reply=await ai.run(initial.id,'请只解释第三步当前使用什么工具，不做任何修改，也不要提出修改方案。','steps',()=>{});assert.equal(reply.proposal.operations.length,0);assert.equal(reply.session.threadId,sessionId);record('多轮会话保存恢复','使用相同 Codex 会话编号恢复对话，并读取撤销后的当前项目。');
     await fs.writeFile(path.join(evidence,'live-ai-result.json'),JSON.stringify({model:(await profiles.selected()).model,threadPersisted:true,proposal:pending.proposal,changedStep:changed.steps[2],usage:reply.usage},null,2),'utf8');
   }
+  // 使用真实文件控件和原生 Chromium 拖入事件，不用伪造 File 路径或模拟 AI。
+  const dbg=win.webContents.debugger;
+  if(!dbg.isAttached())dbg.attach('1.3');
+  await dbg.sendCommand('Page.enable');
+  await dbg.sendCommand('Page.setInterceptFileChooserDialog',{enabled:true});
+  const fixtures=path.join(store.root,'attachment-fixtures');await fs.mkdir(fixtures,{recursive:true});
+  const nonce='ATTACH-'+randomUUID();
+  const firstFile=path.join(fixtures,'聊天需求说明.md'),secondFile=path.join(fixtures,'字幕要求.txt'),imageFile=path.join(fixtures,'界面示例.png'),libraryFile=path.join(fixtures,'底部资料.txt');
+  await fs.writeFile(firstFile,'# 附件读取验收\n核验编号：'+nonce+'\n要求：优先使用本地素材。\n','utf8');
+  await fs.writeFile(secondFile,'字幕关键词：逐句校对。\n','utf8');await fs.writeFile(libraryFile,'此文件只加入项目资料，不授权 AI 读取。\n','utf8');await fs.copyFile(path.join(evidence,'desktop-initial.png'),imageFile);
+  await evaluate("(()=>{const el=document.querySelector('textarea[aria-label=\"给 AI 的修改要求\"]');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,'添加附件时保留这段输入。');el.dispatchEvent(new Event('input',{bubbles:true}));})()");
+  const chooser=new Promise((resolve,reject)=>{const timer=setTimeout(()=>{dbg.removeListener('message',listener);reject(Error('点击文件按钮没有打开文件选择控件'));},5000);const listener=(_,method,params)=>{if(method==='Page.fileChooserOpened'){clearTimeout(timer);dbg.removeListener('message',listener);resolve(params);}};dbg.on('message',listener);});
+  await titleClick('添加文件到本次对话');await chooser;
+  const {root}=await dbg.sendCommand('DOM.getDocument');const {nodeId}=await dbg.sendCommand('DOM.querySelector',{nodeId:root.nodeId,selector:'input[data-testid="chat-file-input"]'});
+  await dbg.sendCommand('DOM.setFileInputFiles',{nodeId,files:[firstFile,imageFile]});
+  await until(()=>evaluate("document.querySelectorAll('.composer-file').length===2"),'选择实际磁盘附件');
+  assert.equal(await evaluate("document.querySelector('textarea[aria-label=\"给 AI 的修改要求\"]').value"),'添加附件时保留这段输入。');
+  const uploaded=await store.read(initial.id);assert.equal(uploaded.files.length,original.files.length+2);assert(uploaded.files.every(f=>!f.aiAllowed));assert(await evaluate("!!document.querySelector('.composer-file.readable')&&!!document.querySelector('.composer-file.stored')"));record('聊天文件按钮与读取状态','点击按钮打开真实文件控件，选择实际 Markdown 和 PNG；保留输入，分别显示可读文本和仅本机保存。');
+  await titleClick('移除本次附件：界面示例.png');assert.equal(await evaluate("document.querySelectorAll('.composer-file').length"),1);assert.equal((await store.read(initial.id)).files.length,uploaded.files.length);record('移除草稿附件','只取消本次发送，不删除项目资料或原文件。');
+  const dropFiles=async(selector,files,captureDrag=false)=>{const point=await evaluate(`(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return {x:r.x+Math.min(r.width/2,60),y:r.y+Math.min(r.height/2,70)};})()`);const data={items:[],files,dragOperationsMask:1};await dbg.sendCommand('Input.dispatchDragEvent',{type:'dragEnter',...point,data});await dbg.sendCommand('Input.dispatchDragEvent',{type:'dragOver',...point,data});if(captureDrag)await capture('chat-drag-hint.png');await dbg.sendCommand('Input.dispatchDragEvent',{type:'drop',...point,data});};
+  await dropFiles('.chat-messages',[secondFile],true);await until(()=>evaluate("document.querySelectorAll('.composer-file').length===2"),'拖入聊天附件');record('聊天区拖动上传','实际磁盘 TXT 拖入后完成复制保存，并进入本次消息附件列表。');
+  await dropFiles('.materials',[libraryFile]);await until(async()=>(await store.read(initial.id)).files.length===original.files.length+4,'拖入底部资料');assert.equal(await evaluate("document.querySelectorAll('.composer-file').length"),2);record('底部资料区拖动上传','文件归档到项目资料，不会擅自加入聊天或开放 AI 读取。');
+  await evaluate("[...document.querySelectorAll('.project-item')].find(b=>b.textContent.includes('video-edit-acceptance')).click()");await until(()=>evaluate("document.querySelectorAll('.composer-file').length===0"),'切换项目时隔离附件');await evaluate("[...document.querySelectorAll('.project-item')].find(b=>b.textContent.includes('smart-video-edit')).click()");await until(()=>evaluate("document.querySelectorAll('.composer-file').length===2"),'返回项目时恢复附件草稿');record('多项目附件隔离','切换项目不会把本次附件带入其他项目，返回原项目后附件草稿仍在。');
+  assert(await evaluate(`window.studio.addFiles(${JSON.stringify(initial.id)},[new File(['test'],'fake.txt')],true,0).then(()=>false,error=>error.message.includes('真实文件'))`));record('拖入文件的来源保护','浏览器构造的伪文件无法获得本机路径，不能冒充用户选中的文件。');
+  const previousHeight=await evaluate("document.querySelector('.composer-v2').getBoundingClientRect().height");
+  await evaluate("(()=>{const r=document.querySelector('.composer-resizer'),b=r.getBoundingClientRect();r.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,clientY:b.y+3}));window.dispatchEvent(new MouseEvent('mousemove',{clientY:b.y-117}));window.dispatchEvent(new MouseEvent('mouseup'));})()");await sleep(150);assert(await evaluate("document.querySelector('.composer-v2').getBoundingClientRect().height")>previousHeight+20);record('输入区加高与拖动调整','默认输入区显著大于旧版，拖动上边缘后高度实际增加。');
+  await titleClick('展开输入框');await until(()=>evaluate("document.querySelector('dialog.message-editor').open"),'展开长消息编辑');const longText='请保留原有目标，逐项检查输入、工具、异常处理与验收标准。\n'.repeat(55);
+  await evaluate(`(()=>{const el=document.querySelector('textarea[aria-label="完整消息内容"]');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,${JSON.stringify(longText)});el.dispatchEvent(new Event('input',{bubbles:true}));})()`);await capture('expanded-message-editor.png');await click('完成编辑');assert.equal(await evaluate("document.querySelector('textarea[aria-label=\"给 AI 的修改要求\"]').value"),longText);record('完整消息编辑','长文本在大窗口中编辑，收起后内容逐字保留。');
+  await capture('chat-attachments-ready.png');
+  if(process.env.STUDIO_ATTACH_LIVE==='1'){
+    await sendFromUI('请阅读本次附件，原样回复其中的核验编号和字幕关键词。只核验附件正文，不修改 Skill，也不要提出修改方案。');
+    await until(async()=>{const s=await store.session(initial.id);return s.messages.at(-1)?.role==='assistant'||s.messages.at(-1)?.role==='error';},'真实 AI 读取聊天附件',140000);
+    const answer=await store.session(initial.id);if(answer.messages.at(-1)?.role==='error')throw Error(answer.messages.at(-1).text);assert(answer.messages.at(-1).text.includes(nonce));assert(answer.messages.at(-1).text.includes('逐句校对'));assert.equal(answer.proposal.operations.length,0);assert.equal(answer.messages.filter(m=>m.role==='user').at(-1).attachments.length,2);assert((await store.read(initial.id)).files.every(f=>!f.aiAllowed));
+    await until(()=>evaluate("document.querySelectorAll('.composer-file').length===0"),'发送后清空本次附件草稿');await capture('live-attachment-read.png');await fs.writeFile(path.join(evidence,'live-attachment-results.json'),JSON.stringify({passed:true,nonce,reply:answer.messages.at(-1).text,attachments:answer.messages.filter(m=>m.role==='user').at(-1).attachments,usage:answer.messages.at(-1).usage,model:(await profiles.selected()).model},null,2),'utf8');record('真实 AI 附件正文读取','模型准确回复仅存在于磁盘附件正文中的随机核验编号与字幕关键词，无模拟回复。');
+  }
+  dbg.detach();
   // 无密钥状态独立测试，不能伪造成功回复。
   const config=await profiles.read();const selected=await profiles.selected();const temp={id:'no-key-test',name:'未配置测试',baseUrl:selected.baseUrl,model:selected.model,auth:'key',encryptedKey:''};await fs.writeFile(profiles.file,JSON.stringify({selected:temp.id,profiles:[temp]}),'utf8');await assert.rejects(ai.run(initial.id,'检查当前 Skill','steps',()=>{}),/尚未配置/);await fs.writeFile(profiles.file,JSON.stringify(config),'utf8');record('无 API 配置错误处理','清晰报告未配置，原项目数据不变。');
   win.webContents.reload();await until(()=>evaluate("document.querySelectorAll('.step-row').length===7"),'最终界面');await capture('desktop-final-1536.png');
